@@ -217,3 +217,68 @@ image, Plus 6 / 8, Ultra 8 / 12.
   the URL plus re-fetching the status. Revisit if the docs add a signature.
 - **Accessibility:** secondary text is `#9a9b9d` (Quanta's `#828282` fails
   4.5:1 on card surfaces). Lighthouse accessibility: 97+ on the generators.
+
+## Model pages and public profiles
+
+- **`/models` and `/models/[id]`** are generated from the catalog (`lib/model-pages.ts`):
+  inputs, settings, defaults and capabilities come from the `ModelEntry`, so a new
+  model file gets a page with no extra work. The URL slug is the model `id`.
+  Rendered per request (not statically) because the "Made with" feed reads the
+  database; a build-time render without one would freeze an error state. No
+  prices are shown there: prices depend on admin overrides in the database.
+- **Public profiles are opt-in.** A user has one only after choosing a `handle`
+  in Account → Public profile; clearing it takes the page offline (404). Rules in
+  `lib/profile-rules.ts` (3–24 chars, `a-z0-9_`, reserved names blocked,
+  unique sparse index `users.handle`). Display name stays first-name-only, same
+  as the community feed; email is never exposed.
+- **URL `/@handle`** is a rewrite (`next.config.ts`) to `/u/[handle]`, because a
+  leading `@` folder means parallel routes in the App Router. Profiles are not
+  listed in `sitemap.ts` (unbounded, opt-in).
+- **Feeds are scoped, not duplicated:** `/api/community` takes `modelId` and
+  `handle`; `CommunityFeed` takes `scope` and `showTabs`.
+
+## Cinema Studio workspace
+
+- **`/cinema`** is a dedicated workspace for `cinema-studio-4` (director's panel
+  + "Your scenes"). It is the same model and the same endpoint as in the video
+  generator — no new API surface — with the nine creative controls (genre, era,
+  pacing, camera, lens, aperture, movement, lighting, palette) promoted from the
+  settings dialog to visible pickers, plus Surprise / Reset look.
+- **Auto is still omitted**, never sent as the literal `"auto"` (see the model
+  file). Surprise me picks a random non-Auto value per control from the
+  catalog's own values, so it can never produce a value the mapper rejects.
+- **Pinned model, shared dock.** `useGenerator(surface, presets, { lockModelId })`
+  ignores the dock's model choice and `?model=` / `?tab=`, so visiting `/cinema`
+  never changes the video generator's selection. The prompt and attachments are
+  still the video dock's (one dock state per surface); media with roles Cinema
+  Studio doesn't have (start/end/source) is dropped once on arrival.
+- **History is scoped by model** (`GET /api/generations?modelId=`, index
+  `generations.model`), so old runs of other video models don't crowd the page.
+- **One routing rule:** `workspacePath(surface, modelId)` (`lib/studio/workspace.ts`)
+  sends Cinema Studio to `/cinema` and every other model to
+  `/<surface>?model=<id>`; Reuse, Recreate, model pages, the home cards and the
+  footer all use it.
+- Palette swatches are a deterministic gradient from the palette name (the API
+  returns names, not colours): a recognisable identity, not the real grade.
+
+## Community by model, enterprise page, tools check
+
+- **`/community/[model]`** lists published work for one catalog model
+  (`GET /api/community?modelId=` already existed). `/community` shows a "Browse
+  by model" row built from an aggregate over published work, so it only lists
+  models that have something to show. Rendered per request (reads the DB).
+- **Tools check (2026-10-24):** the public docs index (`/docs/llms.txt`) and the
+  image/video category pages list 41 model pages; none is an upscale, lip-sync,
+  inpaint or face-swap tool. Those live in Higgsfield's own app, so they are
+  *not built here*. Do not invent endpoints; revisit if the docs add them.
+- **`/enterprise` is deliberately a contact page, not a Teams plan.** Shared
+  workspaces, pooled credits, SSO and invoicing do not exist in this codebase, so
+  the page lists them under "Not built yet — ask us" and sends a `mailto:` to the
+  support address. A real Teams plan needs orgs/roles/billing work and prices
+  from the owner.
+- **Doc drift to review:** the live docs index now advertises webhook *signature
+  verification* ("Webhooks" and "Webhook security" pages); `docs/decisions.md`
+  §Architecture says the docs described no signature, so webhooks are
+  authenticated by our own HMAC token on the callback URL plus a re-fetch of the
+  status. That is still safe, but check the new pages and consider verifying the
+  platform signature too.

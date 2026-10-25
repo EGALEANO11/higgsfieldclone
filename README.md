@@ -127,6 +127,10 @@ finalizeGeneration(): re-fetch status → copy outputs to R2 → complete, or re
 Stripe ─▶ /api/webhooks/stripe ─▶ ledger grants (idempotent on Stripe ids)
 ```
 
+Public surfaces: `/models` + `/models/[id]` (from the catalog), `/cinema` (Cinema Studio
+workspace), `/@handle` profiles
+(opt-in, set in Account), `/community`, `/g/[id]`.
+
 Key files: `lib/generations/{submit,finalize,reconcile,cancel}.ts`,
 `lib/billing/{price,ledger,stripe-events}.ts`, `lib/higgsfield/client.ts`,
 `generation/catalog/**`, `components/generator/**`, `auth.ts`.
