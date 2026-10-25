@@ -46,7 +46,7 @@ pnpm db:init --admin=you@example.com   # indexes + Effects presets (+ admin role
 For offline development set in `.env.local`:
 `MONGODB_URI=mongodb://127.0.0.1:27027/?replicaSet=vireo`,
 `HF_API_BASE_URL=http://localhost:4010`, `HF_CREDENTIALS=mock:mock`,
-`SIGNUP_BONUS_CREDITS=200`, `E2E_TEST_MODE=true`. Magic links are printed to the
+`SIGNUP_BONUS_CREDITS=200`, `HF_PRICE_GUARD=false` (the mock's estimates differ from our price table, so the guard would refuse every submit), `E2E_TEST_MODE=true`. Magic links are printed to the
 dev-server log (no Resend key needed); media is stored under `.data/media`; the
 reconciler runs in-process every 5 s because there is no cron or webhook tunnel.
 

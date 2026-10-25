@@ -8,6 +8,11 @@ for (const path of [
   "/video",
   "/effects",
   "/community",
+  "/community/soul-2",
+  "/models",
+  "/models/soul-2",
+  "/cinema",
+  "/enterprise",
   "/pricing",
   "/login",
 ]) {
