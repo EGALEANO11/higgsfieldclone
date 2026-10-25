@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import type { ReactElement, ReactNode } from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
@@ -28,7 +29,7 @@ export interface GenerationDetail {
   settings?: Record<string, unknown>
   /** Credits this generation cost (net of refunds). */
   cost?: number
-  author?: { name: string; image?: string }
+  author?: { name: string; image?: string; handle?: string }
 }
 
 export interface GenerationDetailRow {
@@ -159,9 +160,18 @@ export function GenerationDetailModal({
                       <span className="text-sm text-foreground">
                         {generation.author.name}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        Author
-                      </span>
+                      {generation.author.handle ? (
+                        <Link
+                          href={`/@${generation.author.handle}`}
+                          className="text-xs text-lime hover:underline"
+                        >
+                          @{generation.author.handle}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Author
+                        </span>
+                      )}
                     </span>
                   </div>
                 ) : (

@@ -34,7 +34,8 @@ export interface PublicGeneration {
     durationSec?: number
   }[]
   aspect: number
-  author: { name: string; image?: string }
+  /** `handle` is present only when the author opted into a public profile. */
+  author: { name: string; image?: string; handle?: string }
   publishedAt: number
 }
 
@@ -44,7 +45,9 @@ const PUBLIC_FILTER: Filter<GenerationDoc> = {
   unpublishedByAdmin: { $ne: true },
 }
 
-function displayName(user?: Pick<UserDoc, "name" | "email"> | null): string {
+export function displayName(
+  user?: Pick<UserDoc, "name" | "email"> | null
+): string {
   const name = user?.name?.trim()
   if (name) return name.split(/\s+/)[0]!.slice(0, 24)
   return "Vireo creator"
@@ -58,7 +61,7 @@ async function withAuthors(docs: GenerationDoc[]): Promise<PublicGeneration[]> {
   const authors = await users
     .find(
       { _id: { $in: ids } },
-      { projection: { name: 1, image: 1, email: 1 } }
+      { projection: { name: 1, image: 1, email: 1, handle: 1 } }
     )
     .toArray()
   const byId = new Map(authors.map((user) => [user._id.toHexString(), user]))
@@ -82,6 +85,7 @@ async function withAuthors(docs: GenerationDoc[]): Promise<PublicGeneration[]> {
       author: {
         name: displayName(author),
         ...(author?.image ? { image: author.image } : {}),
+        ...(author?.handle ? { handle: author.handle } : {}),
       },
       publishedAt: (doc.publishedAt ?? doc.createdAt).getTime(),
     }
@@ -91,6 +95,8 @@ async function withAuthors(docs: GenerationDoc[]): Promise<PublicGeneration[]> {
 export async function listPublic(input: {
   surface?: Surface
   modelId?: string
+  /** Restrict to one author (public profile page). */
+  userId?: ObjectId
   cursor?: string
   limit?: number
 }): Promise<{ items: PublicGeneration[]; nextCursor: string | null }> {
@@ -99,6 +105,7 @@ export async function listPublic(input: {
   const filter: Filter<GenerationDoc> = { ...PUBLIC_FILTER }
   if (input.surface) filter.surface = input.surface
   if (input.modelId) filter.modelId = input.modelId
+  if (input.userId) filter.userId = input.userId
   if (input.cursor) {
     const at = new Date(Number(input.cursor))
     if (!Number.isNaN(at.getTime())) filter.publishedAt = { $lt: at }

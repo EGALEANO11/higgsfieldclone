@@ -4,17 +4,20 @@ import { redirect } from "next/navigation"
 import { CreditCard, Sparkle } from "lucide-react"
 
 import { LedgerTable } from "@/components/account/ledger-table"
+import { ProfileForm } from "@/components/account/profile-form"
 import { getAccount, listLedger } from "@/lib/account"
 import { currentUser } from "@/lib/auth/session"
+import { getOwnProfile } from "@/lib/profiles"
 
 export const metadata: Metadata = { title: "Account" }
 
 export default async function AccountPage() {
   const user = await currentUser()
   if (!user) redirect("/login?callbackUrl=/account")
-  const [account, ledger] = await Promise.all([
+  const [account, ledger, profile] = await Promise.all([
     getAccount(user.objectId),
     listLedger(user.objectId),
+    getOwnProfile(user.objectId),
   ])
   return (
     <div className="flex flex-col gap-8">
@@ -85,6 +88,8 @@ export default async function AccountPage() {
           </Link>
         </div>
       </section>
+
+      <ProfileForm initialHandle={profile.handle} initialBio={profile.bio} />
 
       <section aria-labelledby="history" className="flex flex-col gap-3">
         <h2 id="history" className="text-lg font-semibold">

@@ -1,9 +1,13 @@
 import "server-only"
 
+import type { ObjectId } from "mongodb"
 import { unstable_rethrow } from "next/navigation"
 
 import type { Surface } from "@/generation/catalog/types"
-import { listPublic, type PublicGeneration } from "@/lib/community"
+import {
+  listPublic,
+  type PublicGeneration,
+} from "@/lib/community"
 import { listPresets } from "@/lib/presets"
 
 import { toEffectCard, type EffectCard } from "./effects"
@@ -26,6 +30,8 @@ export async function loadEffects(): Promise<EffectCard[]> {
 /** A page of published generations; `failed` is set instead of throwing. */
 export async function loadPublic(input: {
   surface?: Surface
+  modelId?: string
+  userId?: ObjectId
   limit?: number
 }): Promise<{
   items: PublicGeneration[]

@@ -19,6 +19,10 @@ export interface UserDoc {
   email: string
   name?: string | null
   image?: string | null
+  /** Public profile slug (lowercase, unique). Absent = no public profile. */
+  handle?: string
+  /** Short public bio shown on the profile. */
+  bio?: string
   emailVerified?: Date | null
   role: Role
   credits: Credits

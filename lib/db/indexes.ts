@@ -29,6 +29,7 @@ export async function ensureIndexes(database: Db): Promise<string[]> {
     { unique: true, sparse: true }
   )
   await add("users.grants", { nextGrantAt: 1 }, { sparse: true })
+  await add("users.handle", { handle: 1 }, { unique: true, sparse: true })
   await add(
     "accounts.provider",
     { provider: 1, providerAccountId: 1 },
@@ -56,6 +57,11 @@ export async function ensureIndexes(database: Db): Promise<string[]> {
   await add("generations.submit", { userId: 1, submitKey: 1 }, { unique: true })
   await add("generations.inflight", { status: 1, updatedAt: 1 })
   await add("generations.public", { isPublic: 1, publishedAt: -1 })
+  await add("generations.publicAuthor", {
+    isPublic: 1,
+    userId: 1,
+    publishedAt: -1,
+  })
 
   await add("projects.user", { userId: 1, updatedAt: -1 })
   await add("uploads.user", { userId: 1, createdAt: -1 })
