@@ -9,6 +9,7 @@ import type { Surface } from "@/generation/catalog/types"
 import { useDock } from "@/generation/stores/dock"
 import { useSettings } from "@/generation/stores/settings"
 import { useToast } from "@/components/providers/app-providers"
+import { CINEMA_MODEL_ID, workspacePath } from "@/lib/studio/workspace"
 import { cn } from "@/lib/utils"
 
 export interface RecreateSource {
@@ -41,12 +42,13 @@ export function useRecreate() {
       if (!useSettings.persist.hasHydrated())
         await useSettings.persist.rehydrate()
       const dock = useDock.getState()
-      dock.setModel(source.surface, model.id)
+      // Cinema Studio has its own workspace; don't change the video generator's model.
+      if (model.id !== CINEMA_MODEL_ID) dock.setModel(source.surface, model.id)
       dock.setPreset(source.surface, undefined)
       dock.setPrompt(source.surface, source.prompt)
       if (Object.keys(source.settings).length > 0)
         useSettings.getState().set(model.id, source.settings)
-      router.push(`/${source.surface}?model=${encodeURIComponent(model.id)}`)
+      router.push(workspacePath(source.surface, model.id))
     },
     [router, toast]
   )

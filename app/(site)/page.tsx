@@ -23,6 +23,7 @@ import {
   ViewAllPill,
 } from "@/components/marketing/section-header"
 import { LoopVideo } from "@/components/media/loop-video"
+import { workspacePath } from "@/lib/studio/workspace"
 import { findModel, MODELS } from "@/generation/catalog"
 import type { ModelEntry } from "@/generation/catalog/types"
 import { FAMILY_LOOPS, familyCover, HERO } from "@/lib/showcase"
@@ -38,7 +39,7 @@ const TOOL_IDS = [
 ] as const
 
 function generatorHref(model: ModelEntry): string {
-  return `/${model.surface}?model=${encodeURIComponent(model.id)}`
+  return workspacePath(model.surface, model.id)
 }
 
 /** One card per model family and surface, video first, each pointing at its lead model. */

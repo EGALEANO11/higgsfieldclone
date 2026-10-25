@@ -1,4 +1,5 @@
-import { activeSurfaces } from "@/generation/catalog"
+import { activeSurfaces, findModel } from "@/generation/catalog"
+import { CINEMA_MODEL_ID } from "@/lib/studio/workspace"
 
 export type NavLink = {
   href: string
@@ -22,6 +23,12 @@ export function navLinks(): NavLink[] {
       match: (path) => path.startsWith("/video"),
     },
   ]
+  if (findModel(CINEMA_MODEL_ID))
+    links.push({
+      href: "/cinema",
+      label: "Cinema",
+      match: (path) => path.startsWith("/cinema"),
+    })
   if (surfaces.includes("audio"))
     links.push({
       href: "/audio",

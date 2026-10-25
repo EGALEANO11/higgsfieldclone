@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth/session"
 import { listGenerations } from "@/lib/generations/library"
 import { errorResponse, json } from "@/lib/http"
 
-/** GET /api/generations?surface=&projectId=&status=&cursor= — the caller's library. */
+/** GET /api/generations?surface=&projectId=&modelId=&status=&cursor= — the caller's library. */
 export async function GET(request: Request) {
   try {
     const user = await requireUser()
@@ -12,6 +12,7 @@ export async function GET(request: Request) {
         surface: (params.get("surface") ?? undefined) as
           "image" | "video" | "audio" | undefined,
         projectId: params.get("projectId") ?? undefined,
+        modelId: params.get("modelId") ?? undefined,
         status: (params.get("status") ?? "all") as
           "all" | "completed" | "failed",
         cursor: params.get("cursor") ?? undefined,

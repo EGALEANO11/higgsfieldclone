@@ -23,7 +23,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Seedance 2.5", href: "/video?model=seedance-2.5" },
       { label: "Kling 3.0", href: "/video?model=kling-3-std" },
       { label: "Wan 3.0", href: "/video?model=wan-3" },
-      { label: "Cinema Studio 4.0", href: "/video?model=cinema-studio-4" },
+      { label: "Cinema Studio 4.0", href: "/cinema" },
       { label: "MiniMax H3", href: "/video?model=minimax-h3" },
     ],
   },

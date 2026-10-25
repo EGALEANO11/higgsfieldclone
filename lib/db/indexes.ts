@@ -46,6 +46,7 @@ export async function ensureIndexes(database: Db): Promise<string[]> {
   // Generations.
   await add("generations.feed", { userId: 1, createdAt: -1 })
   await add("generations.surface", { userId: 1, surface: 1, createdAt: -1 })
+  await add("generations.model", { userId: 1, modelId: 1, createdAt: -1 })
   await add("generations.project", { userId: 1, projectId: 1, createdAt: -1 })
   await add(
     "generations.request",

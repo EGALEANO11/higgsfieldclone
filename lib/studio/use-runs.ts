@@ -32,9 +32,11 @@ export type SubmitOutcome =
 export function useRuns(options: {
   surface?: Surface
   projectId?: string
+  /** Only runs of one model. */
+  modelId?: string
   enabled?: boolean
 }) {
-  const { surface, projectId, enabled = true } = options
+  const { surface, projectId, modelId, enabled = true } = options
   const [records, setRecords] = useState<GenerationView[]>([])
   // The query whose first page has arrived; `loaded` is derived from it.
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
@@ -51,9 +53,10 @@ export function useRuns(options: {
       const params = new URLSearchParams(extra)
       if (surface) params.set("surface", surface)
       if (projectId) params.set("projectId", projectId)
+      if (modelId) params.set("modelId", modelId)
       return `/api/generations?${params.toString()}`
     },
-    [projectId, surface]
+    [modelId, projectId, surface]
   )
 
   const merge = useCallback((incoming: GenerationView[]) => {
