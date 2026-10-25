@@ -58,7 +58,8 @@ reconciler runs in-process every 5 s because there is no cron or webhook tunnel.
 | Resend | `AUTH_RESEND_KEY`, `EMAIL_FROM` | Verify the sending domain first. |
 | Higgsfield | `HF_API_BASE_URL=https://api.higgsfield.ai`, `HF_CREDENTIALS=key_id:key_secret` | Keys from [console.higgsfield.ai](https://console.higgsfield.ai). Then run `pnpm pricing:sync`. |
 | Webhooks | `HF_WEBHOOK_SECRET`, `HF_WEBHOOK_BASE_URL`, `HF_WEBHOOK_SIGNING_SECRET` (the `whsec_…` from Console → Settings) | Public HTTPS origin. Locally: `cloudflared tunnel --url http://localhost:3000` and put the URL here. |
-| Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` | Create 6 recurring prices (3 plans × month/year) and 3 one-time top-up prices. |
+| Support | `SUPPORT_CLABE` (+ `SUPPORT_BENEFICIARY`, `SUPPORT_BANK`, `SUPPORT_CONCEPT`) | Voluntary support by SPEI, shown on `/support` only on request. Keep the CLABE in the environment, never in the repo. |
+| Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` | Only with `BILLING_MODE=paid`: create 6 recurring prices (3 plans × month/year) and 3 one-time top-up prices. |
 | R2 | `R2_*` | Public bucket or custom domain for `R2_PUBLIC_BASE_URL`; CORS: allow GET from your origin. |
 
 Local Stripe webhooks:
@@ -69,7 +70,17 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 
 Copy the printed `whsec_…` into `STRIPE_WEBHOOK_SECRET`. Test cards: `4242 4242 4242 4242`.
 
-### Pricing
+### Free, with voluntary support
+
+By default (`BILLING_MODE=free`) the app is free: every account gets
+`FREE_MONTHLY_CREDITS` (default 300) each month, reset on the 1st (UTC), and
+there are no plans, top-ups or checkout. Support is voluntary: `/support` has a
+button that fetches the SPEI details from `GET /api/donar` on request, so the
+bank details are never in a page, the bundle or a search index. The credits
+still cap what the free tier can cost in generation API spend. Set
+`BILLING_MODE=paid` for the original Stripe plans and top-ups.
+
+### Pricing (paid mode)
 
 `credits = ceil(platform USD × CREDIT_MARKUP / CREDIT_USD_VALUE)`. Prices
 come from the platform's estimate endpoint:

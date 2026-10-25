@@ -24,6 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ),
     entry("/effects", 0.6),
     entry("/pricing", 0.6),
+    entry("/support", 0.5),
     entry("/enterprise", 0.4),
   ]
 }

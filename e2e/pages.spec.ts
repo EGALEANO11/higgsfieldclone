@@ -13,6 +13,7 @@ const ROUTES = [
   "/models/cinema-studio-4",
   "/cinema",
   "/enterprise",
+  "/support",
   "/pricing",
   "/login",
   "/legal/terms",

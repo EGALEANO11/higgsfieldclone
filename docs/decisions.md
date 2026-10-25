@@ -306,3 +306,35 @@ image, Plus 6 / 8, Ultra 8 / 12.
   `{requestId, status}` (unique index), which also covers unsigned deliveries.
 - The legacy `X-Webhook-Secret-Key` header (the platform says it will be retired)
   is ignored.
+
+## Free, with voluntary support
+
+Owner decision (2026-10-25): the app is free and funded by voluntary support, like the
+studio's other apps (SPEI to REBELSOFT ORG; the details are served on request).
+
+- **`BILLING_MODE=free` is the default**, `paid` keeps the original Stripe model
+  intact. A flag rather than deleting the paid code: it is tested, and it keeps the
+  fork mergeable with its upstream. Stripe env vars are required only in paid mode.
+- **Credits stay, as a cost cap.** Every generation is billed by the model providers
+  on one server-side key, so unlimited free use would have no ceiling. Each account
+  gets `FREE_MONTHLY_CREDITS` (default **300, a placeholder** until the owner sets a
+  budget: at the default 2x markup it is roughly 1.5 USD of API spend per active
+  user per month) in the monthly bucket, reset on the 1st (UTC), never accumulating.
+- **Lazy grant, no cron.** `ensureFreeAllowance` runs when the balance or account is
+  read and before a submit; it is idempotent through the ledger's unique key
+  (`free-month`, `<user>:<YYYY-MM>`), so concurrent tabs grant once. Legacy
+  paid-plan users are skipped so nothing is clawed back.
+- **Support is voluntary and unlocks nothing.** No supporter state is tracked: SPEI is
+  manual and anonymous, matching the other apps. Credits can still be added by hand
+  from the admin (`admin_adjust`) if the owner chooses to thank someone.
+- **Bank details never ship.** `SUPPORT_CLABE` comes from the environment (validated
+  with the CLABE check digit, so a typo fails at boot) and is returned only by
+  `GET /api/donar` (`no-store`, `X-Robots-Tag: noindex`, disallowed in `robots.txt`)
+  when someone presses "Show how to support". The repository is public, so the
+  CLABE must never be committed. Only the organisation name and bank are defaults.
+- **UI:** `/pricing` and `/account/billing` redirect (to `/support` and `/account`),
+  the nav says Support instead of Pricing, the Upgrade button and the
+  out-of-credits dialog become Support, and the account page shows the free
+  allowance and the next refill.
+- **Language:** the UI is English like the rest of the app; the bank concept
+  ("Apoyo Vireo") is Spanish because it appears on the supporter's statement.

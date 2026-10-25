@@ -7,6 +7,7 @@ import { PortalButton } from "@/components/account/portal-button"
 import { TopupGrid } from "@/components/billing/plan-cards"
 import { getAccount } from "@/lib/account"
 import { currentUser } from "@/lib/auth/session"
+import { isFreeMode } from "@/lib/billing/mode"
 import { PLANS } from "@/lib/billing/plans"
 
 export const metadata: Metadata = { title: "Billing" }
@@ -18,6 +19,8 @@ export default async function BillingPage({
 }) {
   const user = await currentUser()
   if (!user) redirect("/login?callbackUrl=/account/billing")
+  // Free mode sells nothing, so there is no billing to manage.
+  if (isFreeMode()) redirect("/account")
   const [account, { checkout }] = await Promise.all([
     getAccount(user.objectId),
     searchParams,

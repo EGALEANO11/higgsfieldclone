@@ -58,7 +58,8 @@ test("Cinema Studio: direct the look, generate, and keep the scene in its histor
 
   // Cheapest settings so the signup bonus covers the run.
   await page.getByRole("radio", { name: "480p" }).click()
-  await page.getByLabel("Duration").fill("4")
+  await page.getByRole("slider", { name: /Duration/ }).press("Home")
+  await expect(page.getByRole("slider", { name: "Duration 4s" })).toBeVisible()
 
   await page
     .getByRole("textbox", { name: "Prompt" })

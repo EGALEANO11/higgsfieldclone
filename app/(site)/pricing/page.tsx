@@ -1,11 +1,13 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import type { ReactNode } from "react"
 import { ChevronDown, Sparkles } from "lucide-react"
 
 import { Atmosphere } from "@/components/marketing/atmosphere"
 import { PricingView } from "@/components/marketing/pricing-view"
 import { BRAND } from "@/lib/brand"
+import { isFreeMode } from "@/lib/billing/mode"
 import { PLANS } from "@/lib/billing/plans"
 
 export const metadata: Metadata = {
@@ -112,7 +114,11 @@ const FAQ: { q: string; a: ReactNode }[] = [
   },
 ]
 
+// Free mode has no plans to show; the pricing page is rendered per request.
+export const dynamic = "force-dynamic"
+
 export default function PricingPage() {
+  if (isFreeMode()) redirect("/support")
   return (
     <div className="relative isolate">
       <Atmosphere glow="top" className="-z-10 h-[520px]" />

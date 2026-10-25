@@ -8,7 +8,7 @@ export type NavLink = {
 }
 
 /** Top navigation, in site order. Audio appears once an audio model exists. */
-export function navLinks(): NavLink[] {
+export function navLinks(mode: "free" | "paid" = "paid"): NavLink[] {
   const surfaces = activeSurfaces()
   const links: NavLink[] = [
     { href: "/", label: "Explore", match: (path) => path === "/" },
@@ -46,11 +46,17 @@ export function navLinks(): NavLink[] {
       label: "Community",
       match: (path) => path.startsWith("/community") || path.startsWith("/g/"),
     },
-    {
-      href: "/pricing",
-      label: "Pricing",
-      match: (path) => path.startsWith("/pricing"),
-    }
+    mode === "free"
+      ? {
+          href: "/support",
+          label: "Support",
+          match: (path) => path.startsWith("/support"),
+        }
+      : {
+          href: "/pricing",
+          label: "Pricing",
+          match: (path) => path.startsWith("/pricing"),
+        }
   )
   return links
 }

@@ -5,6 +5,7 @@ import { collections } from "@/lib/db/collections"
 import { env } from "@/lib/env"
 
 import { creditConfig } from "./config"
+import { billingMode, type BillingMode } from "./mode"
 import { fromPrice, toCreditTable, type CreditTable } from "./price"
 import { PRICING_TABLE } from "./pricing-table"
 import type { PricingTable } from "./pricing-types"
@@ -79,6 +80,8 @@ export type ClientPricing = {
   table: CreditTable
   disabled: string[]
   fromPrices: Record<string, number>
+  /** "free": monthly free credits and voluntary support, no plans or checkout. */
+  billingMode: BillingMode
 }
 
 export async function clientPricing(): Promise<ClientPricing> {
@@ -92,5 +95,6 @@ export async function clientPricing(): Promise<ClientPricing> {
     table: context.credits,
     disabled: [...context.disabled],
     fromPrices,
+    billingMode: billingMode(),
   }
 }

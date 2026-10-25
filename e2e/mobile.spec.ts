@@ -13,6 +13,7 @@ for (const path of [
   "/models/soul-2",
   "/cinema",
   "/enterprise",
+  "/support",
   "/pricing",
   "/login",
 ]) {

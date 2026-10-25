@@ -5,6 +5,13 @@ import { ObjectId, type Filter } from "mongodb"
 import { NotFoundError } from "@/lib/errors"
 import { totalCredits } from "@/lib/billing/ledger"
 import { planOf, type BillingInterval, type PlanId } from "@/lib/billing/plans"
+import { ensureFreeAllowance, nextRefill } from "@/lib/billing/free-allowance"
+import {
+  billingMode,
+  freeMonthlyCredits,
+  isFreeMode,
+  type BillingMode,
+} from "@/lib/billing/mode"
 import { billingEnabled } from "@/lib/billing/stripe"
 import {
   collections,
@@ -27,10 +34,15 @@ export interface AccountView {
   total: number
   hasBillingAccount: boolean
   billingEnabled: boolean
+  billingMode: BillingMode
+  /** Free mode: credits granted each month, and when the next grant lands. */
+  freeMonthlyCredits: number
+  nextRefillAt?: number
   createdAt: number
 }
 
 export async function getAccount(userId: ObjectId): Promise<AccountView> {
+  await ensureFreeAllowance(userId)
   const { users } = await collections()
   const user = await users.findOne({ _id: userId })
   if (!user) throw new NotFoundError("Account not found.")
@@ -50,6 +62,11 @@ export async function getAccount(userId: ObjectId): Promise<AccountView> {
     total: totalCredits(credits),
     hasBillingAccount: Boolean(user.stripeCustomerId),
     billingEnabled: billingEnabled(),
+    billingMode: billingMode(),
+    freeMonthlyCredits: freeMonthlyCredits(),
+    ...(isFreeMode() && freeMonthlyCredits() > 0
+      ? { nextRefillAt: nextRefill(new Date()).getTime() }
+      : {}),
     createdAt: user.createdAt?.getTime() ?? 0,
   }
 }
@@ -58,6 +75,7 @@ export async function getAccount(userId: ObjectId): Promise<AccountView> {
 export async function getBalance(
   userId: ObjectId
 ): Promise<{ total: number; credits: Credits }> {
+  await ensureFreeAllowance(userId)
   const { users } = await collections()
   const user = await users.findOne(
     { _id: userId },
@@ -88,6 +106,7 @@ const REASON_LABEL: Record<LedgerReason, string> = {
   subscription_reset: "Plan credits",
   topup_purchase: "Top-up",
   signup_bonus: "Welcome bonus",
+  free_allowance: "Monthly free credits",
   admin_adjust: "Adjustment by support",
   stripe_refund: "Payment refunded",
 }

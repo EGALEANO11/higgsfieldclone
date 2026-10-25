@@ -7,6 +7,7 @@ import {
   CreditCard,
   FolderOpen,
   Gem,
+  Heart,
   LogOut,
   Menu,
   Shield,
@@ -37,7 +38,8 @@ import { navLinks } from "./nav-links"
  */
 export function TopNav({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname()
-  const links = navLinks()
+  const { pricing } = useApp()
+  const links = navLinks(pricing.billingMode)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -92,7 +94,8 @@ export function TopNav({ compact = false }: { compact?: boolean }) {
 }
 
 function AccountControls({ compact }: { compact: boolean }) {
-  const { user, credits, openAuth, openUpgrade } = useApp()
+  const { user, credits, openAuth, openUpgrade, pricing } = useApp()
+  const free = pricing.billingMode === "free"
   const height = compact ? "h-8" : "h-9"
   if (!user)
     return (
@@ -140,7 +143,12 @@ function AccountControls({ compact }: { compact: boolean }) {
           height
         )}
       >
-        <Gem className="size-3.5" aria-hidden /> Upgrade
+        {free ? (
+          <Heart className="size-3.5" aria-hidden />
+        ) : (
+          <Gem className="size-3.5" aria-hidden />
+        )}{" "}
+        {free ? "Support" : "Upgrade"}
       </button>
       <UserMenu />
     </>
@@ -201,7 +209,8 @@ function MobileSheet({
   onOpenChange: (open: boolean) => void
   pathname: string
 }) {
-  const { user, openAuth, openUpgrade } = useApp()
+  const { user, openAuth, openUpgrade, pricing } = useApp()
+  const links = navLinks(pricing.billingMode)
   const close = () => onOpenChange(false)
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -221,7 +230,7 @@ function MobileSheet({
             </DialogPrimitive.Close>
           </div>
           <nav aria-label="Mobile" className="mt-4 flex flex-col gap-1">
-            {navLinks().map((link) => (
+            {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -266,7 +275,7 @@ function MobileSheet({
                   openUpgrade()
                 }}
               >
-                Upgrade
+                {pricing.billingMode === "free" ? "Support" : "Upgrade"}
               </button>
             ) : (
               <>

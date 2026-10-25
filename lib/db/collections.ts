@@ -32,6 +32,8 @@ export interface UserDoc {
   planRenewsAt?: Date
   /** Plan allowance granted per month (annual plans get monthly grants). */
   subscriptionAllowance?: number
+  /** Free mode: the UTC month ("YYYY-MM") the free allowance was last granted for. */
+  freeAllowancePeriod?: string
   /** Next monthly grant for annual subscriptions. */
   nextGrantAt?: Date
   stripeCustomerId?: string
@@ -174,6 +176,7 @@ export type LedgerReason =
   | "subscription_reset"
   | "topup_purchase"
   | "signup_bonus"
+  | "free_allowance"
   | "admin_adjust"
   | "stripe_refund"
 
