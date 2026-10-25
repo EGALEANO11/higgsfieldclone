@@ -4,10 +4,19 @@ import { createHmac, timingSafeEqual } from "node:crypto"
 
 import { env } from "@/lib/env"
 
+import { parseSigningSecrets } from "./signature"
+
 /**
- * The docs describe no webhook signature, so each webhook URL carries the
- * generation id and an HMAC of it; the handler recomputes and compares in
- * constant time, then re-fetches the status instead of trusting the payload.
+ * Two independent layers authenticate a delivery:
+ *
+ * 1. Our own URL token: each webhook URL carries the generation id and an HMAC
+ *    of it; the handler recomputes and compares in constant time. This always
+ *    applies, and the payload is still never trusted: finalize re-fetches the
+ *    status.
+ * 2. The platform's Standard Webhooks signature (docs: how-to/webhooks), checked
+ *    when HF_WEBHOOK_SIGNING_SECRET is set. The platform only signs once the
+ *    account has revealed its signing secret, so this layer is opt-in by config
+ *    and, once configured, mandatory.
  */
 export function webhookToken(generationId: string, secret: string): string {
   return createHmac("sha256", secret).update(generationId).digest("hex")
@@ -33,4 +42,9 @@ export function webhookUrlFor(generationId: string): string | undefined {
   url.searchParams.set("gid", generationId)
   url.searchParams.set("t", webhookToken(generationId, secret))
   return url.toString()
+}
+
+/** The configured platform signing keys; empty when signature checking is off. */
+export function signingSecrets(): Buffer[] {
+  return parseSigningSecrets(env().HF_WEBHOOK_SIGNING_SECRET)
 }

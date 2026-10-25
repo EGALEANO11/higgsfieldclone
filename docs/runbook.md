@@ -96,6 +96,7 @@ item from Community and blocks re-publishing; **Dismiss** closes the reports.
 |---|---|
 | `AUTH_SECRET` | Rotating signs everyone out (database sessions stay, cookies become invalid). |
 | `HF_WEBHOOK_SECRET` | In-flight runs' webhook tokens stop verifying; the reconciler finishes them. |
+| `HF_WEBHOOK_SIGNING_SECRET` | Rotate in Higgsfield Console → Settings. The new secret signs immediately and the old one stays valid 24 h, so set `whsec_new,whsec_old`, deploy, and drop the old value after a day. |
 | `HF_CREDENTIALS` | Create the new key in the console first, deploy, then revoke the old key. |
 | `STRIPE_WEBHOOK_SECRET` | Roll in the Stripe dashboard; Stripe retries failed deliveries. |
 | `CRON_SECRET` | Update in Vercel; Vercel Cron sends the new value automatically. |

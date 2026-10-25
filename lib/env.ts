@@ -2,6 +2,8 @@ import "server-only"
 
 import { z } from "zod"
 
+import { parseSigningSecrets } from "@/lib/higgsfield/signature"
+
 /**
  * Server environment, validated once with zod. Production requires every
  * service; development allows documented fallbacks (magic links in the log,
@@ -53,6 +55,19 @@ const schema = z.object({
     "HF_CREDENTIALS must be key_id:key_secret"
   ),
   HF_WEBHOOK_SECRET: optionalString,
+  /**
+   * Higgsfield's webhook signing secret(s) (`whsec_…`, Console → Settings),
+   * comma-separated while rotating. When set, every delivery must carry a valid
+   * Standard Webhooks signature.
+   */
+  HF_WEBHOOK_SIGNING_SECRET: optionalString.refine((value) => {
+    try {
+      parseSigningSecrets(value)
+      return true
+    } catch {
+      return false
+    }
+  }, "HF_WEBHOOK_SIGNING_SECRET must be whsec_… value(s) from Higgsfield Console → Settings"),
   HF_WEBHOOK_BASE_URL: optionalString,
   HF_PRICE_GUARD: bool(true),
 
@@ -126,6 +141,17 @@ export function env(): Env {
           .join("\n")}\nSee .env.example for what each one does.`
       )
   }
+  if (
+    value.NODE_ENV === "production" &&
+    !isBuildPhase() &&
+    !warned &&
+    !value.HF_WEBHOOK_SIGNING_SECRET
+  ) {
+    warned = true
+    console.warn(
+      "[env] HF_WEBHOOK_SIGNING_SECRET unset → webhooks rely on the URL token and a status re-fetch, not the platform signature"
+    )
+  }
   if (value.NODE_ENV !== "production" && !warned) {
     warned = true
     const fallbacks = [
@@ -141,6 +167,9 @@ export function env(): Env {
         "STRIPE_SECRET_KEY unset → checkout is disabled",
       !value.HF_WEBHOOK_BASE_URL &&
         "HF_WEBHOOK_BASE_URL unset → no webhooks; the reconciler finishes runs",
+      value.HF_WEBHOOK_BASE_URL &&
+        !value.HF_WEBHOOK_SIGNING_SECRET &&
+        "HF_WEBHOOK_SIGNING_SECRET unset → webhooks rely on the URL token and a status re-fetch, not the platform signature",
     ].filter(Boolean)
     for (const line of fallbacks) console.warn(`[env] ${line}`)
   }

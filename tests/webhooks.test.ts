@@ -49,6 +49,9 @@ const { handleStripeEvent } = await import("@/lib/billing/stripe-events")
 const { submitGeneration } = await import("@/lib/generations/submit")
 const { generationStatuses } = await import("@/lib/generations/library")
 const { webhookToken } = await import("@/lib/higgsfield/webhook")
+const { parseSigningSecrets, signStandardWebhook } =
+  await import("@/lib/higgsfield/signature")
+const { resetEnvForTests } = await import("@/lib/env")
 const { collections } = await import("@/lib/db/collections")
 const { POST: higgsfieldWebhook } =
   await import("@/app/api/webhooks/higgsfield/route")
@@ -282,5 +285,119 @@ describe("Higgsfield webhook route", () => {
       status: "completed",
     })
     expect(response.status).toBe(400)
+  })
+
+  describe("with HF_WEBHOOK_SIGNING_SECRET set", () => {
+    const OLD = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+    const NEW = "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+    const previous = process.env.HF_WEBHOOK_SIGNING_SECRET
+
+    const configure = (value: string | undefined) => {
+      if (value === undefined) delete process.env.HF_WEBHOOK_SIGNING_SECRET
+      else process.env.HF_WEBHOOK_SIGNING_SECRET = value
+      resetEnvForTests()
+    }
+    beforeEach(() => configure(`${NEW},${OLD}`))
+    afterAll(() => configure(previous))
+
+    /** Posts a delivery signed like the platform does (Standard Webhooks). */
+    function signedCall(
+      gid: string,
+      body: unknown,
+      options: {
+        secret?: string
+        ageSeconds?: number
+        tamper?: boolean
+        sign?: boolean
+      } = {}
+    ) {
+      const raw = JSON.stringify(body)
+      const timestamp =
+        Math.floor(Date.now() / 1000) - (options.ageSeconds ?? 0)
+      const [key] = parseSigningSecrets(options.secret ?? NEW)
+      const headers = new Headers({ "content-type": "application/json" })
+      if (options.sign !== false) {
+        headers.set("webhook-id", `evt_${randomUUID()}`)
+        headers.set("webhook-timestamp", String(timestamp))
+        headers.set(
+          "webhook-signature",
+          signStandardWebhook(key!, headers.get("webhook-id")!, timestamp, raw)
+        )
+      }
+      return higgsfieldWebhook(
+        new Request(
+          `https://vireo.test/api/webhooks/higgsfield?gid=${gid}&t=${webhookToken(gid, "webhook-secret")}`,
+          {
+            method: "POST",
+            headers,
+            body: options.tamper ? raw.replace("completed", "failed") : raw,
+          }
+        )
+      )
+    }
+
+    it("finalizes a correctly signed delivery", async () => {
+      const { user, doc, view } = await submitted()
+      fake.complete(doc.hfRequestId!, "image")
+      const response = await signedCall(doc._id.toHexString(), {
+        request_id: doc.hfRequestId,
+        status: "completed",
+      })
+      expect(response.status).toBe(200)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      const [after] = await generationStatuses(user.objectId, [view.id])
+      expect(after!.status).toBe("completed")
+    })
+
+    it("accepts a delivery signed with the previous secret during rotation", async () => {
+      const { doc } = await submitted()
+      fake.complete(doc.hfRequestId!, "image")
+      const response = await signedCall(
+        doc._id.toHexString(),
+        { request_id: doc.hfRequestId, status: "completed" },
+        { secret: OLD }
+      )
+      expect(response.status).toBe(200)
+    })
+
+    it("rejects an unsigned delivery even with a valid URL token", async () => {
+      const { doc } = await submitted()
+      const response = await signedCall(
+        doc._id.toHexString(),
+        { request_id: doc.hfRequestId, status: "completed" },
+        { sign: false }
+      )
+      expect(response.status).toBe(401)
+    })
+
+    it("rejects a body changed after signing, a stale timestamp and a foreign secret", async () => {
+      const { doc } = await submitted()
+      const gid = doc._id.toHexString()
+      const body = { request_id: doc.hfRequestId, status: "completed" }
+      expect((await signedCall(gid, body, { tamper: true })).status).toBe(401)
+      expect((await signedCall(gid, body, { ageSeconds: 600 })).status).toBe(
+        401
+      )
+      expect(
+        (
+          await signedCall(gid, body, {
+            secret: "whsec_" + Buffer.alloc(24, 7).toString("base64"),
+          })
+        ).status
+      ).toBe(401)
+    })
+
+    it("does not touch the run when the signature is rejected", async () => {
+      const { user, doc, view } = await submitted()
+      fake.complete(doc.hfRequestId!, "image")
+      await signedCall(
+        doc._id.toHexString(),
+        { request_id: doc.hfRequestId, status: "completed" },
+        { sign: false }
+      )
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      const [after] = await generationStatuses(user.objectId, [view.id])
+      expect(after!.status).not.toBe("completed")
+    })
   })
 })

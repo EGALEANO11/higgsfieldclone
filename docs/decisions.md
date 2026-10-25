@@ -68,9 +68,11 @@ Newest decisions go at the bottom of each section.
   debited) in one transaction *before* the platform call, with a unique
   `submitKey` (client-generated UUID per Generate press). A second press with
   the same key hits the unique index and returns the existing generation.
-- **Webhook auth:** docs describe no signature. URL carries
-  `gid` + `t = HMAC-SHA256(gid, HF_WEBHOOK_SECRET)` (constant-time compare);
-  the payload is never trusted — we re-fetch `GET /requests/{id}/status`.
+- **Webhook auth (two layers):** the URL carries
+  `gid` + `t = HMAC-SHA256(gid, HF_WEBHOOK_SECRET)` (constant-time compare), and
+  the payload is never trusted — we re-fetch `GET /requests/{id}/status`. The
+  platform *also* signs deliveries (Standard Webhooks); see "Webhook signature"
+  below. (The docs described no signature when this was first written.)
 - **Polling:** the browser polls our `GET /api/generations/status?ids=` (DB
   only) every 3.5 s while anything is in flight — never a server action.
 - **Media storage:** Cloudflare R2 via `@aws-sdk/client-s3` + `lib-storage`
@@ -276,9 +278,31 @@ image, Plus 6 / 8, Ultra 8 / 12.
   the page lists them under "Not built yet — ask us" and sends a `mailto:` to the
   support address. A real Teams plan needs orgs/roles/billing work and prices
   from the owner.
-- **Doc drift to review:** the live docs index now advertises webhook *signature
-  verification* ("Webhooks" and "Webhook security" pages); `docs/decisions.md`
-  §Architecture says the docs described no signature, so webhooks are
-  authenticated by our own HMAC token on the callback URL plus a re-fetch of the
-  status. That is still safe, but check the new pages and consider verifying the
-  platform signature too.
+
+## Webhook signature
+
+- The platform signs deliveries with Standard Webhooks (`webhook-id`,
+  `webhook-timestamp`, `webhook-signature: v1,<base64>`; HMAC-SHA256 over
+  `id.timestamp.rawBody`, key = base64 of the secret after `whsec_`, five-minute
+  tolerance). Verified in `lib/higgsfield/signature.ts`, written by hand (no new
+  dependency) and pinned to the official `standardwebhooks` library: the tests
+  assert the README vector and signatures the library itself produced.
+- **Opt-in by config, mandatory once on.** `HF_WEBHOOK_SIGNING_SECRET` (the
+  `whsec_…` from Console → Settings). The platform only signs after the account
+  has revealed that secret ("until then, deliveries for your account are not
+  signed"), so requiring a signature unconditionally would drop every webhook
+  for a deployment that hasn't. With the secret set, an unsigned or badly signed
+  delivery is a 401 even with a valid URL token; unset, behaviour is unchanged
+  and a boot warning says so. Recommended for production.
+- **Rotation:** the platform keeps the old secret for 24 h and sends one
+  signature per secret, so the setting takes a comma-separated list
+  (`whsec_new,whsec_old`). A malformed value fails at boot (zod refine).
+- **A rejected delivery is a permanent 4xx**, so the platform will not retry it;
+  the reconciler finishes the run by polling, which is why failing closed is safe.
+- The raw body is read as text and verified *before* JSON parsing; a re-serialized
+  body would not match.
+- Layers stay independent: the URL token still applies, and the payload is still
+  never trusted (finalize re-fetches the status). Deduplication stays on
+  `{requestId, status}` (unique index), which also covers unsigned deliveries.
+- The legacy `X-Webhook-Secret-Key` header (the platform says it will be retired)
+  is ignored.

@@ -57,7 +57,7 @@ reconciler runs in-process every 5 s because there is no cron or webhook tunnel.
 | MongoDB Atlas | `MONGODB_URI`, `MONGODB_DB` | Any replica set (Atlas M0 works). Run `pnpm db:init` against it. |
 | Resend | `AUTH_RESEND_KEY`, `EMAIL_FROM` | Verify the sending domain first. |
 | Higgsfield | `HF_API_BASE_URL=https://api.higgsfield.ai`, `HF_CREDENTIALS=key_id:key_secret` | Keys from [console.higgsfield.ai](https://console.higgsfield.ai). Then run `pnpm pricing:sync`. |
-| Webhooks | `HF_WEBHOOK_SECRET`, `HF_WEBHOOK_BASE_URL` | Public HTTPS origin. Locally: `cloudflared tunnel --url http://localhost:3000` and put the URL here. |
+| Webhooks | `HF_WEBHOOK_SECRET`, `HF_WEBHOOK_BASE_URL`, `HF_WEBHOOK_SIGNING_SECRET` (the `whsec_…` from Console → Settings) | Public HTTPS origin. Locally: `cloudflared tunnel --url http://localhost:3000` and put the URL here. |
 | Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` | Create 6 recurring prices (3 plans × month/year) and 3 one-time top-up prices. |
 | R2 | `R2_*` | Public bucket or custom domain for `R2_PUBLIC_BASE_URL`; CORS: allow GET from your origin. |
 
