@@ -15,6 +15,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Edit video", href: "/video?tab=edit" },
       { label: "Motion control", href: "/video?tab=motion" },
       { label: "Effects", href: "/effects" },
+      { label: "All models", href: "/models" },
     ],
   },
   {

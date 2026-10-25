@@ -237,6 +237,15 @@ export default async function PublicGenerationPage({
             </dl>
           </div>
 
+          {findModel(item.modelId) ? (
+            <Link
+              href={`/models/${encodeURIComponent(item.modelId)}`}
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              About {item.modelLabel} →
+            </Link>
+          ) : null}
+
           <div className="flex flex-col gap-2">
             <RecreateButton
               source={{

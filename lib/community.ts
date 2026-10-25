@@ -126,6 +126,27 @@ export async function listPublic(input: {
   }
 }
 
+/** Models that have published work, most-published first. */
+export async function listCommunityModels(
+  limit = 60
+): Promise<{ modelId: string; count: number }[]> {
+  const { generations } = await collections()
+  const rows = await generations
+    .aggregate<{ _id: string; count: number }>([
+      { $match: PUBLIC_FILTER },
+      { $group: { _id: "$modelId", count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+      { $limit: Math.min(Math.max(limit, 1), 200) },
+    ])
+    .toArray()
+  return rows.map((row) => ({ modelId: row._id, count: row.count }))
+}
+
+export async function countPublic(modelId: string): Promise<number> {
+  const { generations } = await collections()
+  return generations.countDocuments({ ...PUBLIC_FILTER, modelId })
+}
+
 export async function getPublic(id: string): Promise<PublicGeneration | null> {
   if (!ObjectId.isValid(id) || id.length !== 24) return null
   const { generations } = await collections()

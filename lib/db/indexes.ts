@@ -57,6 +57,11 @@ export async function ensureIndexes(database: Db): Promise<string[]> {
   await add("generations.submit", { userId: 1, submitKey: 1 }, { unique: true })
   await add("generations.inflight", { status: 1, updatedAt: 1 })
   await add("generations.public", { isPublic: 1, publishedAt: -1 })
+  await add("generations.publicModel", {
+    isPublic: 1,
+    modelId: 1,
+    publishedAt: -1,
+  })
   await add("generations.publicAuthor", {
     isPublic: 1,
     userId: 1,
