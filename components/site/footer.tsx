@@ -43,6 +43,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     links: [
       { label: "Pricing", href: "/pricing" },
       { label: "Community", href: "/community" },
+      { label: "Teams & enterprise", href: "/enterprise" },
       { label: "Support", href: `mailto:${BRAND.supportEmail}` },
       { label: "Terms", href: "/legal/terms" },
       { label: "Privacy", href: "/legal/privacy" },
