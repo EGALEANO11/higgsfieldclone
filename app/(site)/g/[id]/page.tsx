@@ -12,6 +12,7 @@ import { ReportButton } from "@/components/marketing/report-dialog"
 import { findModel } from "@/generation/catalog"
 import { BRAND } from "@/lib/brand"
 import { getPublic, type PublicGeneration } from "@/lib/community"
+import { profilePath } from "@/lib/profile-rules"
 import { familyCover } from "@/lib/showcase"
 
 type Params = Promise<{ id: string }>
@@ -174,9 +175,21 @@ export default async function PublicGenerationPage({
               className="size-10 text-sm"
             />
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-base font-medium">
-                {item.author.name}
-              </span>
+              {item.author.handle ? (
+                <Link
+                  href={profilePath(item.author.handle)}
+                  className="truncate text-base font-medium hover:underline"
+                >
+                  {item.author.name}
+                  <span className="ml-1.5 text-sm font-normal text-lime">
+                    @{item.author.handle}
+                  </span>
+                </Link>
+              ) : (
+                <span className="truncate text-base font-medium">
+                  {item.author.name}
+                </span>
+              )}
               <span className="text-xs text-muted-foreground">
                 Published{" "}
                 <time dateTime={new Date(item.publishedAt).toISOString()}>
@@ -223,6 +236,15 @@ export default async function PublicGenerationPage({
               ))}
             </dl>
           </div>
+
+          {findModel(item.modelId) ? (
+            <Link
+              href={`/models/${encodeURIComponent(item.modelId)}`}
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              About {item.modelLabel} →
+            </Link>
+          ) : null}
 
           <div className="flex flex-col gap-2">
             <RecreateButton

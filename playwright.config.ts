@@ -2,7 +2,8 @@ import { defineConfig, devices } from "@playwright/test"
 
 /**
  * E2E against a running stack. Locally: `pnpm db:dev`, `pnpm mock:higgsfield`
- * and `pnpm dev` (with E2E_TEST_MODE=true), then `pnpm test:e2e`.
+ * and `pnpm dev` (with E2E_TEST_MODE=true and HF_PRICE_GUARD=false, see the
+ * README's offline settings), then `pnpm test:e2e`.
  * Against a preview deploy: E2E_BASE_URL=https://… pnpm test:e2e (the preview
  * must run with E2E_TEST_MODE=true and the mock or a test platform key).
  */

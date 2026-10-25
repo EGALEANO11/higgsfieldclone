@@ -68,9 +68,11 @@ Newest decisions go at the bottom of each section.
   debited) in one transaction *before* the platform call, with a unique
   `submitKey` (client-generated UUID per Generate press). A second press with
   the same key hits the unique index and returns the existing generation.
-- **Webhook auth:** docs describe no signature. URL carries
-  `gid` + `t = HMAC-SHA256(gid, HF_WEBHOOK_SECRET)` (constant-time compare);
-  the payload is never trusted — we re-fetch `GET /requests/{id}/status`.
+- **Webhook auth (two layers):** the URL carries
+  `gid` + `t = HMAC-SHA256(gid, HF_WEBHOOK_SECRET)` (constant-time compare), and
+  the payload is never trusted — we re-fetch `GET /requests/{id}/status`. The
+  platform *also* signs deliveries (Standard Webhooks); see "Webhook signature"
+  below. (The docs described no signature when this was first written.)
 - **Polling:** the browser polls our `GET /api/generations/status?ids=` (DB
   only) every 3.5 s while anything is in flight — never a server action.
 - **Media storage:** Cloudflare R2 via `@aws-sdk/client-s3` + `lib-storage`
@@ -217,3 +219,122 @@ image, Plus 6 / 8, Ultra 8 / 12.
   the URL plus re-fetching the status. Revisit if the docs add a signature.
 - **Accessibility:** secondary text is `#9a9b9d` (Quanta's `#828282` fails
   4.5:1 on card surfaces). Lighthouse accessibility: 97+ on the generators.
+
+## Model pages and public profiles
+
+- **`/models` and `/models/[id]`** are generated from the catalog (`lib/model-pages.ts`):
+  inputs, settings, defaults and capabilities come from the `ModelEntry`, so a new
+  model file gets a page with no extra work. The URL slug is the model `id`.
+  Rendered per request (not statically) because the "Made with" feed reads the
+  database; a build-time render without one would freeze an error state. No
+  prices are shown there: prices depend on admin overrides in the database.
+- **Public profiles are opt-in.** A user has one only after choosing a `handle`
+  in Account → Public profile; clearing it takes the page offline (404). Rules in
+  `lib/profile-rules.ts` (3–24 chars, `a-z0-9_`, reserved names blocked,
+  unique sparse index `users.handle`). Display name stays first-name-only, same
+  as the community feed; email is never exposed.
+- **URL `/@handle`** is a rewrite (`next.config.ts`) to `/u/[handle]`, because a
+  leading `@` folder means parallel routes in the App Router. Profiles are not
+  listed in `sitemap.ts` (unbounded, opt-in).
+- **Feeds are scoped, not duplicated:** `/api/community` takes `modelId` and
+  `handle`; `CommunityFeed` takes `scope` and `showTabs`.
+
+## Cinema Studio workspace
+
+- **`/cinema`** is a dedicated workspace for `cinema-studio-4` (director's panel
+  + "Your scenes"). It is the same model and the same endpoint as in the video
+  generator — no new API surface — with the nine creative controls (genre, era,
+  pacing, camera, lens, aperture, movement, lighting, palette) promoted from the
+  settings dialog to visible pickers, plus Surprise / Reset look.
+- **Auto is still omitted**, never sent as the literal `"auto"` (see the model
+  file). Surprise me picks a random non-Auto value per control from the
+  catalog's own values, so it can never produce a value the mapper rejects.
+- **Pinned model, shared dock.** `useGenerator(surface, presets, { lockModelId })`
+  ignores the dock's model choice and `?model=` / `?tab=`, so visiting `/cinema`
+  never changes the video generator's selection. The prompt and attachments are
+  still the video dock's (one dock state per surface); media with roles Cinema
+  Studio doesn't have (start/end/source) is dropped once on arrival.
+- **History is scoped by model** (`GET /api/generations?modelId=`, index
+  `generations.model`), so old runs of other video models don't crowd the page.
+- **One routing rule:** `workspacePath(surface, modelId)` (`lib/studio/workspace.ts`)
+  sends Cinema Studio to `/cinema` and every other model to
+  `/<surface>?model=<id>`; Reuse, Recreate, model pages, the home cards and the
+  footer all use it.
+- Palette swatches are a deterministic gradient from the palette name (the API
+  returns names, not colours): a recognisable identity, not the real grade.
+
+## Community by model, enterprise page, tools check
+
+- **`/community/[model]`** lists published work for one catalog model
+  (`GET /api/community?modelId=` already existed). `/community` shows a "Browse
+  by model" row built from an aggregate over published work, so it only lists
+  models that have something to show. Rendered per request (reads the DB).
+- **Tools check (2026-10-24):** the public docs index (`/docs/llms.txt`) and the
+  image/video category pages list 41 model pages; none is an upscale, lip-sync,
+  inpaint or face-swap tool. Those live in Higgsfield's own app, so they are
+  *not built here*. Do not invent endpoints; revisit if the docs add them.
+- **`/enterprise` is deliberately a contact page, not a Teams plan.** Shared
+  workspaces, pooled credits, SSO and invoicing do not exist in this codebase, so
+  the page lists them under "Not built yet — ask us" and sends a `mailto:` to the
+  support address. A real Teams plan needs orgs/roles/billing work and prices
+  from the owner.
+
+## Webhook signature
+
+- The platform signs deliveries with Standard Webhooks (`webhook-id`,
+  `webhook-timestamp`, `webhook-signature: v1,<base64>`; HMAC-SHA256 over
+  `id.timestamp.rawBody`, key = base64 of the secret after `whsec_`, five-minute
+  tolerance). Verified in `lib/higgsfield/signature.ts`, written by hand (no new
+  dependency) and pinned to the official `standardwebhooks` library: the tests
+  assert the README vector and signatures the library itself produced.
+- **Opt-in by config, mandatory once on.** `HF_WEBHOOK_SIGNING_SECRET` (the
+  `whsec_…` from Console → Settings). The platform only signs after the account
+  has revealed that secret ("until then, deliveries for your account are not
+  signed"), so requiring a signature unconditionally would drop every webhook
+  for a deployment that hasn't. With the secret set, an unsigned or badly signed
+  delivery is a 401 even with a valid URL token; unset, behaviour is unchanged
+  and a boot warning says so. Recommended for production.
+- **Rotation:** the platform keeps the old secret for 24 h and sends one
+  signature per secret, so the setting takes a comma-separated list
+  (`whsec_new,whsec_old`). A malformed value fails at boot (zod refine).
+- **A rejected delivery is a permanent 4xx**, so the platform will not retry it;
+  the reconciler finishes the run by polling, which is why failing closed is safe.
+- The raw body is read as text and verified *before* JSON parsing; a re-serialized
+  body would not match.
+- Layers stay independent: the URL token still applies, and the payload is still
+  never trusted (finalize re-fetches the status). Deduplication stays on
+  `{requestId, status}` (unique index), which also covers unsigned deliveries.
+- The legacy `X-Webhook-Secret-Key` header (the platform says it will be retired)
+  is ignored.
+
+## Free, with voluntary support
+
+Owner decision (2026-10-25): the app is free and funded by voluntary support, like the
+studio's other apps (SPEI to REBELSOFT ORG; the details are served on request).
+
+- **`BILLING_MODE=free` is the default**, `paid` keeps the original Stripe model
+  intact. A flag rather than deleting the paid code: it is tested, and it keeps the
+  fork mergeable with its upstream. Stripe env vars are required only in paid mode.
+- **Credits stay, as a cost cap.** Every generation is billed by the model providers
+  on one server-side key, so unlimited free use would have no ceiling. Each account
+  gets `FREE_MONTHLY_CREDITS` (default **300, a placeholder** until the owner sets a
+  budget: at the default 2x markup it is roughly 1.5 USD of API spend per active
+  user per month) in the monthly bucket, reset on the 1st (UTC), never accumulating.
+- **Lazy grant, no cron.** `ensureFreeAllowance` runs when the balance or account is
+  read and before a submit; it is idempotent through the ledger's unique key
+  (`free-month`, `<user>:<YYYY-MM>`), so concurrent tabs grant once. Legacy
+  paid-plan users are skipped so nothing is clawed back.
+- **Support is voluntary and unlocks nothing.** No supporter state is tracked: SPEI is
+  manual and anonymous, matching the other apps. Credits can still be added by hand
+  from the admin (`admin_adjust`) if the owner chooses to thank someone.
+- **Bank details never ship.** `SUPPORT_CLABE` comes from the environment (validated
+  with the CLABE check digit, so a typo fails at boot) and is returned only by
+  `GET /api/donar` (`no-store`, `X-Robots-Tag: noindex`, disallowed in `robots.txt`)
+  when someone presses "Show how to support". The repository is public, so the
+  CLABE must never be committed. Only the organisation name and bank are defaults.
+- **UI:** `/pricing` and `/account/billing` redirect (to `/support` and `/account`),
+  the nav says Support instead of Pricing, the Upgrade button and the
+  out-of-credits dialog become Support, and the account page shows the free
+  allowance and the next refill.
+- **Language:** the UI is English like the rest of the app; the bank concept
+  ("Apoyo Vireo") is Spanish because it appears on the supporter's statement.

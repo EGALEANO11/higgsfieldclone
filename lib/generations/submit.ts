@@ -23,6 +23,7 @@ import {
   quoteRequest,
   usdForRequest,
 } from "@/lib/billing/price"
+import { ensureFreeAllowance } from "@/lib/billing/free-allowance"
 import { pricingContext } from "@/lib/billing/pricing"
 import {
   collections,
@@ -144,6 +145,8 @@ export async function submitGeneration(
     "You're generating very fast. Wait a moment and try again."
   )
   const { generations, users, projects } = await collections()
+  // Free mode: the month's free credits must be there before we price and debit.
+  await ensureFreeAllowance(user.objectId)
 
   // Same Generate press twice (double click, retry, two tabs): one generation.
   const existing = await generations.findOne({

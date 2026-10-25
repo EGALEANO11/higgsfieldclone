@@ -74,6 +74,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   agentRules: false,
   poweredByHeader: false,
+  async rewrites() {
+    // Public profiles live at /@handle (the folder is /u/[handle] because a
+    // leading "@" is reserved for parallel routes in the App Router).
+    return [{ source: "/@:handle", destination: "/u/:handle" }]
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

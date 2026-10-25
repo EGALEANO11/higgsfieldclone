@@ -8,6 +8,7 @@ import { collections } from "@/lib/db/collections"
 import { env } from "@/lib/env"
 import { enforceRateLimit } from "@/lib/rate-limit"
 
+import { isFreeMode } from "./mode"
 import { planOf, TOPUPS, topupCredits, type TopupId } from "./plans"
 import { planPriceId, stripe, topupPriceId } from "./stripe"
 
@@ -22,6 +23,15 @@ export const checkoutSchema = z.discriminatedUnion("kind", [
     pack: z.enum(["small", "medium", "large"]),
   }),
 ])
+
+/** Free mode sells nothing; support is voluntary and handled outside Stripe. */
+function assertPaidMode(): void {
+  if (isFreeMode())
+    throw new UserFacingError(
+      "There's nothing to buy: the app is free. You can support it voluntarily from the Support page.",
+      "BILLING_DISABLED"
+    )
+}
 
 /** Stripe customer, created lazily at first checkout (never at sign-up). */
 async function customerFor(user: SessionUser): Promise<string> {
@@ -49,6 +59,7 @@ export async function createCheckoutSession(
   user: SessionUser,
   raw: unknown
 ): Promise<{ url: string }> {
+  assertPaidMode()
   const input = checkoutSchema.parse(raw)
   await enforceRateLimit(
     `checkout:${user.id}`,
@@ -132,6 +143,7 @@ export async function createCheckoutSession(
 export async function createPortalSession(
   user: SessionUser
 ): Promise<{ url: string }> {
+  assertPaidMode()
   await enforceRateLimit(
     `portal:${user.id}`,
     10,

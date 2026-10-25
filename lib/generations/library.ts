@@ -22,6 +22,8 @@ export const PAGE_SIZE = 60
 export const listSchema = z.object({
   surface: z.enum(["image", "video", "audio"]).optional(),
   projectId: z.string().optional(),
+  /** Only runs of one model (the Cinema Studio workspace). */
+  modelId: z.string().max(80).optional(),
   status: z.enum(["all", "completed", "failed"]).default("all"),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(PAGE_SIZE),
@@ -39,6 +41,7 @@ export async function listGenerations(
   const filter: Filter<GenerationDoc> = { userId }
   if (query.surface) filter.surface = query.surface as Surface
   if (query.projectId) filter.projectId = objectIdOrNotFound(query.projectId)
+  if (query.modelId) filter.modelId = query.modelId
   if (query.status === "completed") filter.status = "completed"
   if (query.status === "failed")
     filter.status = { $in: ["failed", "nsfw", "canceled"] }

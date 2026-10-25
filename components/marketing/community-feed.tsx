@@ -20,13 +20,19 @@ const TABS: { value: Filter; label: string }[] = [
 
 type Page = { items: PublicGeneration[]; nextCursor: string | null }
 
+/** Narrows the feed to one author's profile or one model. */
+export type FeedScope = { handle?: string; modelId?: string }
+
 async function fetchPage(
   filter: Filter,
+  scope: FeedScope | undefined,
   cursor: string | null,
   signal: AbortSignal
 ): Promise<Page> {
   const params = new URLSearchParams()
   if (filter !== "all") params.set("surface", filter)
+  if (scope?.handle) params.set("handle", scope.handle)
+  if (scope?.modelId) params.set("modelId", scope.modelId)
   if (cursor) params.set("cursor", cursor)
   const response = await fetch(`/api/community?${params.toString()}`, {
     signal,
@@ -41,10 +47,19 @@ export function CommunityFeed({
   initial,
   initialCursor,
   initialError = false,
+  scope,
+  showTabs = true,
+  emptyTitle,
+  emptyBody,
 }: {
   initial: PublicGeneration[]
   initialCursor: string | null
   initialError?: boolean
+  scope?: FeedScope
+  /** Hide the All · Images · Videos tabs (e.g. a model that makes one kind). */
+  showTabs?: boolean
+  emptyTitle?: string
+  emptyBody?: string
 }) {
   const [filter, setFilter] = useState<Filter>("all")
   const [items, setItems] = useState(initial)
@@ -61,7 +76,12 @@ export function CommunityFeed({
     request.current = controller
     setStatus(nextCursor ? "more" : "switching")
     try {
-      const page = await fetchPage(nextFilter, nextCursor, controller.signal)
+      const page = await fetchPage(
+        nextFilter,
+        scope,
+        nextCursor,
+        controller.signal
+      )
       if (controller.signal.aborted) return
       setItems((current) =>
         nextCursor ? [...current, ...page.items] : page.items
@@ -105,44 +125,47 @@ export function CommunityFeed({
 
   return (
     <div className="flex flex-col gap-8">
-      <div
-        role="tablist"
-        aria-label="Filter community generations"
-        className="mx-auto flex items-center gap-1 rounded-xl bg-surface p-1"
-      >
-        {TABS.map((tab, index) => {
-          const active = tab.value === filter
-          return (
-            <button
-              key={tab.value}
-              ref={(node) => {
-                tabRefs.current[index] = node
-              }}
-              type="button"
-              role="tab"
-              id={`community-tab-${tab.value}`}
-              aria-selected={active}
-              aria-controls="community-panel"
-              tabIndex={active ? 0 : -1}
-              onClick={() => choose(tab.value)}
-              onKeyDown={(event) => onTabKey(event, index)}
-              className={cn(
-                "h-8 rounded-lg px-4 text-sm font-medium transition-colors duration-200",
-                active
-                  ? "bg-white/10 text-white"
-                  : "text-white/40 hover:text-white/80"
-              )}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
+      {showTabs ? (
+        <div
+          role="tablist"
+          aria-label="Filter community generations"
+          className="mx-auto flex items-center gap-1 rounded-xl bg-surface p-1"
+        >
+          {TABS.map((tab, index) => {
+            const active = tab.value === filter
+            return (
+              <button
+                key={tab.value}
+                ref={(node) => {
+                  tabRefs.current[index] = node
+                }}
+                type="button"
+                role="tab"
+                id={`community-tab-${tab.value}`}
+                aria-selected={active}
+                aria-controls="community-panel"
+                tabIndex={active ? 0 : -1}
+                onClick={() => choose(tab.value)}
+                onKeyDown={(event) => onTabKey(event, index)}
+                className={cn(
+                  "h-8 rounded-lg px-4 text-sm font-medium transition-colors duration-200",
+                  active
+                    ? "bg-white/10 text-white"
+                    : "text-white/40 hover:text-white/80"
+                )}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div
         id="community-panel"
-        role="tabpanel"
-        aria-labelledby={`community-tab-${filter}`}
+        {...(showTabs
+          ? { role: "tabpanel", "aria-labelledby": `community-tab-${filter}` }
+          : {})}
         aria-busy={status === "switching"}
         className={cn(
           "transition-opacity",
@@ -172,11 +195,15 @@ export function CommunityFeed({
           <EmptyCard
             icon={<Users className="size-5" aria-hidden />}
             title={
-              filter === "all"
+              emptyTitle ??
+              (filter === "all"
                 ? "Be the first to publish"
-                : `No ${filter === "image" ? "images" : "videos"} published yet`
+                : `No ${filter === "image" ? "images" : "videos"} published yet`)
             }
-            body="Open any finished generation in your library and choose Publish — it will show up here for everyone."
+            body={
+              emptyBody ??
+              "Open any finished generation in your library and choose Publish — it will show up here for everyone."
+            }
             action={
               <Link
                 href={filter === "image" ? "/image" : "/video"}

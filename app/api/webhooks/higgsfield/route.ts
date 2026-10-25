@@ -6,7 +6,8 @@ import { isDuplicateKey } from "@/lib/billing/ledger"
 import { env } from "@/lib/env"
 import { finalizeGeneration } from "@/lib/generations/finalize"
 import { asRecord } from "@/lib/higgsfield/client"
-import { verifyWebhookToken } from "@/lib/higgsfield/webhook"
+import { verifyStandardWebhook } from "@/lib/higgsfield/signature"
+import { signingSecrets, verifyWebhookToken } from "@/lib/higgsfield/webhook"
 import { json } from "@/lib/http"
 
 export const runtime = "nodejs"
@@ -16,9 +17,12 @@ const REQUEST_ID = /^[a-f0-9-]{8,64}$/i
 
 /**
  * Higgsfield completion webhook (docs: how-to/webhooks). The URL carries the
- * generation id and an HMAC token; the payload itself is never trusted —
- * finalizeGeneration re-fetches the status. Replies fast (< 10 s) and does the
- * copy work after the response.
+ * generation id and an HMAC token. When HF_WEBHOOK_SIGNING_SECRET is set the
+ * delivery must also carry a valid Standard Webhooks signature over the raw
+ * body. Either way the payload itself is never trusted — finalizeGeneration
+ * re-fetches the status. Replies fast (< 10 s) and does the copy work after
+ * the response. A 4xx is permanent for the platform; the reconciler then
+ * finishes the run by polling.
  */
 export async function POST(request: Request) {
   const url = new URL(request.url)
@@ -28,7 +32,28 @@ export async function POST(request: Request) {
   if (!secret || !verifyWebhookToken(gid, token, secret))
     return json({ error: "Invalid webhook token" }, 401)
 
-  const envelope = asRecord(await request.json().catch(() => null))
+  // The signature covers the raw bytes, so read the text before parsing.
+  const raw = await request.text()
+  const keys = signingSecrets()
+  if (keys.length) {
+    const verified = verifyStandardWebhook({
+      body: raw,
+      headers: request.headers,
+      keys,
+    })
+    if (!verified.ok) {
+      console.warn(`[webhook] rejected delivery for ${gid}: ${verified.reason}`)
+      return json({ error: "Invalid webhook signature" }, 401)
+    }
+  }
+
+  let parsed: unknown = null
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    // Falls through to the envelope check below.
+  }
+  const envelope = asRecord(parsed)
   const requestId = envelope.request_id
   const status = envelope.status
   if (

@@ -1,8 +1,10 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 
 import { Atmosphere } from "@/components/marketing/atmosphere"
 import { CommunityFeed } from "@/components/marketing/community-feed"
-import { loadPublic } from "@/components/marketing/data"
+import { loadCommunityModels, loadPublic } from "@/components/marketing/data"
+import { findModel } from "@/generation/catalog"
 
 export const metadata: Metadata = {
   title: "Community",
@@ -11,7 +13,14 @@ export const metadata: Metadata = {
 }
 
 export default async function CommunityPage() {
-  const page = await loadPublic({ limit: 24 })
+  const [page, models] = await Promise.all([
+    loadPublic({ limit: 24 }),
+    loadCommunityModels(),
+  ])
+  const byModel = models.flatMap((entry) => {
+    const model = findModel(entry.modelId)
+    return model ? [{ model, count: entry.count }] : []
+  })
   return (
     <div className="relative isolate">
       <Atmosphere glow="top" className="-z-10 h-[420px]" />
@@ -25,6 +34,26 @@ export default async function CommunityPage() {
             made, then make it your own.
           </p>
         </header>
+        {byModel.length > 0 ? (
+          <nav
+            aria-label="Browse by model"
+            className="flex flex-wrap items-center justify-center gap-2"
+          >
+            <span className="text-xs tracking-wide text-[#828282] uppercase">
+              Browse by model
+            </span>
+            {byModel.map(({ model, count }) => (
+              <Link
+                key={model.id}
+                href={`/community/${encodeURIComponent(model.id)}`}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-surface px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {model.label}
+                <span className="text-[#828282] tabular-nums">{count}</span>
+              </Link>
+            ))}
+          </nav>
+        ) : null}
         <CommunityFeed
           initial={page.items}
           initialCursor={page.nextCursor}

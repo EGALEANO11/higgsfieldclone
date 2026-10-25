@@ -1,17 +1,72 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { X } from "lucide-react"
 
 import { useApp } from "@/components/providers/app-providers"
+import { SupportPanel } from "@/components/support/support-panel"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { BillingInterval } from "@/lib/billing/plans"
 
 import { IntervalToggle, PlanGrid, TopupGrid } from "./plan-cards"
 
-/** Opened on "not enough credits" and from the nav's Upgrade button. */
+/**
+ * Opened on "not enough credits" and from the nav's Upgrade/Support button.
+ * Free mode shows how credits refill and how to support; paid mode the plans.
+ */
 export function UpgradeModal() {
+  const { pricing } = useApp()
+  return pricing.billingMode === "free" ? <SupportModal /> : <PaidModal />
+}
+
+function SupportModal() {
+  const { upgrade, closeUpgrade, credits } = useApp()
+  return (
+    <DialogPrimitive.Root
+      open={upgrade.open}
+      onOpenChange={(open) => !open && closeUpgrade()}
+    >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/80 duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
+        <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-3xl border border-hairline bg-panel p-6 duration-200 outline-none md:p-8 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogPrimitive.Title className="text-2xl font-semibold tracking-tight md:text-3xl">
+                {upgrade.reason ? "Out of free credits" : "Support this app"}
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Description className="mt-1.5 text-sm text-muted-foreground">
+                {upgrade.reason ??
+                  `You have ✦ ${credits ?? 0} credits. Free credits refill on the 1st of every month.`}
+              </DialogPrimitive.Description>
+            </div>
+            <DialogPrimitive.Close
+              aria-label="Close"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
+            >
+              <X className="size-4" />
+            </DialogPrimitive.Close>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            The app is free and always will be. Voluntary support is what pays
+            for the generation behind it — nothing is locked behind it.
+          </p>
+          <SupportPanel />
+          <Link
+            href="/support"
+            onClick={closeUpgrade}
+            className="text-sm text-lime hover:underline"
+          >
+            How free credits work →
+          </Link>
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  )
+}
+
+function PaidModal() {
   const { upgrade, closeUpgrade, credits } = useApp()
   const [tab, setTab] = useState<"plans" | "credits">("plans")
   const [interval, setInterval] = useState<BillingInterval>("year")

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 
+import { useApp } from "@/components/providers/app-providers"
 import { BRAND } from "@/lib/brand"
 
 import { LogoMark } from "./logo"
@@ -15,6 +16,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Edit video", href: "/video?tab=edit" },
       { label: "Motion control", href: "/video?tab=motion" },
       { label: "Effects", href: "/effects" },
+      { label: "All models", href: "/models" },
     ],
   },
   {
@@ -23,7 +25,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Seedance 2.5", href: "/video?model=seedance-2.5" },
       { label: "Kling 3.0", href: "/video?model=kling-3-std" },
       { label: "Wan 3.0", href: "/video?model=wan-3" },
-      { label: "Cinema Studio 4.0", href: "/video?model=cinema-studio-4" },
+      { label: "Cinema Studio 4.0", href: "/cinema" },
       { label: "MiniMax H3", href: "/video?model=minimax-h3" },
     ],
   },
@@ -42,7 +44,8 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     links: [
       { label: "Pricing", href: "/pricing" },
       { label: "Community", href: "/community" },
-      { label: "Support", href: `mailto:${BRAND.supportEmail}` },
+      { label: "Teams & enterprise", href: "/enterprise" },
+      { label: "Contact", href: `mailto:${BRAND.supportEmail}` },
       { label: "Terms", href: "/legal/terms" },
       { label: "Privacy", href: "/legal/privacy" },
     ],
@@ -50,6 +53,8 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
 ]
 
 export function Footer() {
+  const { pricing } = useApp()
+  const free = pricing.billingMode === "free"
   return (
     <footer className="mt-24">
       <div className="bg-lime px-6 py-14 text-[#131517] md:px-12">
@@ -68,15 +73,21 @@ export function Footer() {
                 <p className="text-sm font-medium text-[#131517]/70">
                   {column.title}
                 </p>
-                {column.links.map((link) => (
-                  <Link
-                    key={link.label}
-                    href={link.href}
-                    className="text-[15px] font-medium hover:underline hover:underline-offset-4"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {column.links
+                  .map((link) =>
+                    free && link.href === "/pricing"
+                      ? { label: "Support", href: "/support" }
+                      : link
+                  )
+                  .map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-[15px] font-medium hover:underline hover:underline-offset-4"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
               </div>
             ))}
           </div>
@@ -84,7 +95,10 @@ export function Footer() {
       </div>
       <div className="flex flex-col items-start justify-between gap-3 px-6 py-5 text-sm text-muted-foreground md:flex-row md:items-center md:px-12">
         <p>
-          © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
+          © {new Date().getFullYear()} {BRAND.name}
+          {free
+            ? ` · Free to use, made by ${BRAND.maker} with voluntary support.`
+            : ". All rights reserved."}
         </p>
         <div className="flex flex-wrap gap-4 text-foreground">
           <Link href="/legal/terms" className="hover:text-lime">

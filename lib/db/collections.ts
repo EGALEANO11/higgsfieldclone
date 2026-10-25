@@ -19,6 +19,10 @@ export interface UserDoc {
   email: string
   name?: string | null
   image?: string | null
+  /** Public profile slug (lowercase, unique). Absent = no public profile. */
+  handle?: string
+  /** Short public bio shown on the profile. */
+  bio?: string
   emailVerified?: Date | null
   role: Role
   credits: Credits
@@ -28,6 +32,8 @@ export interface UserDoc {
   planRenewsAt?: Date
   /** Plan allowance granted per month (annual plans get monthly grants). */
   subscriptionAllowance?: number
+  /** Free mode: the UTC month ("YYYY-MM") the free allowance was last granted for. */
+  freeAllowancePeriod?: string
   /** Next monthly grant for annual subscriptions. */
   nextGrantAt?: Date
   stripeCustomerId?: string
@@ -170,6 +176,7 @@ export type LedgerReason =
   | "subscription_reset"
   | "topup_purchase"
   | "signup_bonus"
+  | "free_allowance"
   | "admin_adjust"
   | "stripe_refund"
 

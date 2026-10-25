@@ -1,9 +1,14 @@
 import "server-only"
 
+import type { ObjectId } from "mongodb"
 import { unstable_rethrow } from "next/navigation"
 
 import type { Surface } from "@/generation/catalog/types"
-import { listPublic, type PublicGeneration } from "@/lib/community"
+import {
+  listCommunityModels,
+  listPublic,
+  type PublicGeneration,
+} from "@/lib/community"
 import { listPresets } from "@/lib/presets"
 
 import { toEffectCard, type EffectCard } from "./effects"
@@ -26,6 +31,8 @@ export async function loadEffects(): Promise<EffectCard[]> {
 /** A page of published generations; `failed` is set instead of throwing. */
 export async function loadPublic(input: {
   surface?: Surface
+  modelId?: string
+  userId?: ObjectId
   limit?: number
 }): Promise<{
   items: PublicGeneration[]
@@ -42,5 +49,21 @@ export async function loadPublic(input: {
       error instanceof Error ? error.message : error
     )
     return { items: [], nextCursor: null, failed: true }
+  }
+}
+
+/** Models with published work (for the community's "Browse by model"); empty when the DB is unavailable. */
+export async function loadCommunityModels(): Promise<
+  { modelId: string; count: number }[]
+> {
+  try {
+    return await listCommunityModels()
+  } catch (error) {
+    unstable_rethrow(error)
+    console.error(
+      "[marketing] community models unavailable",
+      error instanceof Error ? error.message : error
+    )
+    return []
   }
 }

@@ -1,4 +1,5 @@
-import { activeSurfaces } from "@/generation/catalog"
+import { activeSurfaces, findModel } from "@/generation/catalog"
+import { CINEMA_MODEL_ID } from "@/lib/studio/workspace"
 
 export type NavLink = {
   href: string
@@ -7,7 +8,7 @@ export type NavLink = {
 }
 
 /** Top navigation, in site order. Audio appears once an audio model exists. */
-export function navLinks(): NavLink[] {
+export function navLinks(mode: "free" | "paid" = "paid"): NavLink[] {
   const surfaces = activeSurfaces()
   const links: NavLink[] = [
     { href: "/", label: "Explore", match: (path) => path === "/" },
@@ -22,6 +23,12 @@ export function navLinks(): NavLink[] {
       match: (path) => path.startsWith("/video"),
     },
   ]
+  if (findModel(CINEMA_MODEL_ID))
+    links.push({
+      href: "/cinema",
+      label: "Cinema",
+      match: (path) => path.startsWith("/cinema"),
+    })
   if (surfaces.includes("audio"))
     links.push({
       href: "/audio",
@@ -39,11 +46,17 @@ export function navLinks(): NavLink[] {
       label: "Community",
       match: (path) => path.startsWith("/community") || path.startsWith("/g/"),
     },
-    {
-      href: "/pricing",
-      label: "Pricing",
-      match: (path) => path.startsWith("/pricing"),
-    }
+    mode === "free"
+      ? {
+          href: "/support",
+          label: "Support",
+          match: (path) => path.startsWith("/support"),
+        }
+      : {
+          href: "/pricing",
+          label: "Pricing",
+          match: (path) => path.startsWith("/pricing"),
+        }
   )
   return links
 }

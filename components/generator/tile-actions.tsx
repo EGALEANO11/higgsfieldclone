@@ -18,6 +18,7 @@ import {
 import { moveToProjectAction } from "@/app/actions/generations"
 import { createProjectAction, listProjectsAction } from "@/app/actions/projects"
 import { useToast } from "@/components/providers/app-providers"
+import { workspacePath } from "@/lib/studio/workspace"
 import type {
   GalleryItem,
   TileAction,
@@ -66,9 +67,7 @@ export function useTileActions({
         onSelect: () =>
           reuse
             ? reuse(run)
-            : router.push(
-                `/${run.surface}?model=${encodeURIComponent(run.modelId)}`
-              ),
+            : router.push(workspacePath(run.surface, run.modelId)),
       }
       const remove: TileAction = {
         id: "delete",

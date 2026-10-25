@@ -42,6 +42,7 @@ import {
 } from "@/lib/studio/uploads"
 import { useHydrated } from "@/lib/studio/local-flag"
 import { useRuns } from "@/lib/studio/use-runs"
+import { workspacePath } from "@/lib/studio/workspace"
 
 export type Generator = ReturnType<typeof useGenerator>
 
@@ -65,7 +66,21 @@ export function presetPrompt(template: string, subject: string): string {
  * The generator's single controlled state (template rule: one dock state
  * shared by every view): model, tab, prompt, media, settings, runs, price.
  */
-export function useGenerator(surface: Surface, presets: PresetView[] = []) {
+export function useGenerator(
+  surface: Surface,
+  presets: PresetView[] = [],
+  options: {
+    /**
+     * Pin the generator to one model (a dedicated workspace such as Cinema
+     * Studio). The shared dock's model choice and the `?model=` / `?tab=`
+     * params are ignored, so the video generator keeps its own selection.
+     */
+    lockModelId?: string
+    /** Only load history for this model. */
+    historyModelId?: string
+  } = {}
+) {
+  const { lockModelId, historyModelId } = options
   const { user, pricing, openAuth, openUpgrade } = useApp()
   const toast = useToast()
   const router = useRouter()
@@ -100,10 +115,14 @@ export function useGenerator(surface: Surface, presets: PresetView[] = []) {
     [disabled, surface]
   )
   const model: ModelEntry | undefined = useMemo(() => {
+    if (lockModelId) {
+      const pinned = findModel(lockModelId)
+      return pinned && !disabled.has(pinned.id) ? pinned : undefined
+    }
     const id = activeModelId(surface, { ...dock, tab })
     const chosen = id ? findModel(id) : undefined
     return chosen && !disabled.has(chosen.id) ? chosen : models[0]
-  }, [disabled, dock, models, surface, tab])
+  }, [disabled, dock, lockModelId, models, surface, tab])
 
   const preset = presets.find(
     (item) => item.id === dock.presetId && item.surface === surface
@@ -126,19 +145,21 @@ export function useGenerator(surface: Surface, presets: PresetView[] = []) {
     const tabParam = params.get("tab") as GeneratorTab | null
     const presetParam = params.get("preset")
     const animate = params.get("animate")
-    if (modelParam && findModel(modelParam)?.surface === surface)
+    if (lockModelId) {
+      // Pinned workspace: the model is fixed, so only presets/animate apply.
+    } else if (modelParam && findModel(modelParam)?.surface === surface)
       setModelId(surface, modelParam)
     else if (tabParam && tabsFor(surface).includes(tabParam))
       setTab(surface, tabParam)
     if (presetParam) {
       const found = presets.find((item) => item.slug === presetParam)
-      if (found && found.surface === surface) {
+      if (found && found.surface === surface && !lockModelId) {
         setModelId(surface, found.modelId)
         setSetting(found.modelId, found.settings)
         setPreset(surface, found.id)
       }
     }
-    if (animate && surface === "video") {
+    if (animate && surface === "video" && !lockModelId) {
       const first = modelsFor("video", "create").find(
         (m) => (m.roles.start ?? 0) > 0
       )
@@ -171,7 +192,11 @@ export function useGenerator(surface: Surface, presets: PresetView[] = []) {
   }, [hydrated, params])
 
   /* ── Runs, library ─────────────────────────────────────────────────────── */
-  const runs = useRuns({ surface, enabled: Boolean(user) })
+  const runs = useRuns({
+    surface,
+    ...(historyModelId ? { modelId: historyModelId } : {}),
+    enabled: Boolean(user),
+  })
   const uploads = useUploads((state) => state.uploads)
   const loadUploads = useUploads((state) => state.load)
   useEffect(() => {
@@ -386,11 +411,14 @@ export function useGenerator(surface: Surface, presets: PresetView[] = []) {
     (run: GenerationView) => {
       const target = findModel(run.modelId)
       if (!target) return
-      if (target.surface !== surface) {
-        router.push(`/${target.surface}?model=${target.id}`)
+      if (
+        target.surface !== surface ||
+        (lockModelId && target.id !== lockModelId)
+      ) {
+        router.push(workspacePath(target.surface, target.id))
         return
       }
-      setModelId(surface, target.id)
+      if (!lockModelId) setModelId(surface, target.id)
       setSetting(target.id, run.settings)
       setPromptState(surface, run.prompt)
       setPreset(surface, undefined)
@@ -407,6 +435,7 @@ export function useGenerator(surface: Surface, presets: PresetView[] = []) {
       toast.info("Prompt and settings restored")
     },
     [
+      lockModelId,
       router,
       setMediaState,
       setModelId,

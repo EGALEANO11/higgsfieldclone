@@ -75,24 +75,19 @@ test("cancel a queued run on the platform and get the credits back", async ({
   await expect.poll(() => balance(page)).toBe(before)
 })
 
-test("not enough credits opens the upgrade modal", async ({ page }) => {
-  await signIn(page, uniqueEmail("broke"), "/video")
+test("not enough credits opens the support dialog", async ({ page }) => {
+  await signIn(page, uniqueEmail("broke"), "/cinema")
   await dismissCookies(page)
-  await page.getByRole("button", { name: "Change" }).first().click()
-  await page.getByRole("textbox", { name: "Search models" }).fill("4K")
+  // A 30-second Cinema Studio scene costs far more than a month of free credits.
+  await page.getByRole("slider", { name: /Duration/ }).press("End")
+  await expect(page.getByRole("slider", { name: "Duration 30s" })).toBeVisible()
   await page
-    .getByRole("button", { name: /Kling 3\.0 4K/ })
-    .first()
-    .click()
-  await page
-    .getByRole("textbox", { name: /Prompt|Describe/ })
-    .first()
+    .getByRole("textbox", { name: "Prompt" })
     .fill("A drone shot over a glacier")
-  await page
-    .getByRole("button", { name: /^Generate/ })
-    .first()
-    .click()
+  await page.getByRole("button", { name: /^Generate/ }).click()
   await expect(
-    page.getByRole("dialog", { name: /Get more credits|Upgrade your plan/ })
+    page.getByRole("dialog", {
+      name: /Get more credits|Upgrade your plan|Out of free credits/,
+    })
   ).toBeVisible()
 })
